@@ -1,0 +1,13 @@
+{
+  "name": "mjolnir",
+  "version": "1.0.0",
+  "description": "",
+  "main": "intex.js",
+  "type": "module",
+  "scripts": {
+    "start": "node intex.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

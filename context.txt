@@ -1,0 +1,51 @@
+tokenIterator = keep track of token indices
+tokenizer = takes code and tokenizes it
+
+code -> code input
+
+const UNI_KW = {
+  "(": "LPAREN",
+  ")": "RPAREN",
+  ";": "LINEEND",
+  "<<": "BLOCKSTART",
+  ">>": "BLOCKEND",
+  "\n": "NEWLINE",
+  "[": "ARRAYSTART",
+  "]": "ARRAYEND",
+  ",": "SEPARATOR",
+  "+": "ADD",
+  "-": "SUBTRACT",
+  "*": "MULTIPLY",
+  "/": "DIVIDE",
+  "%": "MOD",
+  "^": "XOR",
+  " ": "WHITESPACE",
+  "|": "OR",
+  "&": "AND",
+  "=": "ASSIGNMENT",
+  "<": "LESS",
+  ">": "GREATER",
+  "==": "EQUAL",
+  "!=": "NOT_EQUAL",
+  num: "NUMBER_TYPE",
+  arr: "ARRAY_TYPE",
+  str: "STRING_TYPE",
+  bool: "BOOLEAN_TYPE",
+  func: "FUNCTION_TYPE",
+  if: "IF_STATEMENT",
+  else: "ELSE_STATEMENT",
+
+  NUMBER
+  STRING
+  ENDOFCODE
+};
+
+add check to Advance() function
+if goes out of bounds
+po = Mjolnir
+
+check findExpression
+check throw exception
+
+exp
+call
