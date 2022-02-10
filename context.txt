@@ -49,3 +49,6 @@ check throw exception
 
 exp
 call
+variabledeclare
+
+----------------------------------------------------------------
