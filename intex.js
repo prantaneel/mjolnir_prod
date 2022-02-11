@@ -110,7 +110,7 @@ Mjolnir.prototype.findFactor = function () {
 
       this.Advance();
       if (p.type === "LPAREN") {
-        console.log(this.TOKENS[this.tokenIterator]);
+        // console.log(this.TOKENS[this.tokenIterator]);
         var params = [];
         if (this.TOKENS[this.tokenIterator].type !== "RPAREN") {
           params = this.findParams();
@@ -153,7 +153,6 @@ Mjolnir.prototype.findFactor = function () {
     this.Advance();
     var expression = this.findExpression();
     // console.dir(expression, { depth: null });
-    // console.log(this.TOKENS[this.tokenIterator]);
     // this.Advance();
     tk = this.TOKENS[this.tokenIterator];
     if (tk.type !== "RPAREN") throw new Error("Unsupported syntax");
@@ -183,6 +182,7 @@ Mjolnir.prototype.findArray = function () {
 };
 Mjolnir.prototype.findParams = function () {
   var returnArr = [];
+  // console.log(this.TOKENS[this.tokenIterator]);
   var exp = this.findExpression();
   if (exp) returnArr.push(exp);
   else return returnArr;
@@ -412,6 +412,14 @@ Mjolnir.prototype.findProgram = function () {
       continue;
     }
     if (tk.type === "IDENTIFIER") {
+      if (this.TOKENS[this.tokenIterator + 1].type === "LPAREN") {
+        //this is a funciton that
+        var call = this.findExpression();
+        if (!call) throw new Error("Syntax error");
+        this.findLineEnd();
+        AST.push(call);
+        continue;
+      }
       var assign = this.findAssignment();
       if (!assign) throw new Error("Syntax error");
       this.findLineEnd();
@@ -444,9 +452,7 @@ Mjolnir.prototype.findProgram = function () {
 
 var interpreter = new Mjolnir();
 interpreter.code(`
-  loop(num a = 1; a < 10 ; a = a + 1)<<
-    num c = d;
-  >>;
+  a=echo(11, 12, [1, 2, 3])+echo(11);
 `);
 console.log(interpreter.TOKENS);
 var exp = interpreter.findProgram();
