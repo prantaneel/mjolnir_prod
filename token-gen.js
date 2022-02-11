@@ -31,6 +31,7 @@ const UNI_KW = {
   if: "IF_STATEMENT",
   else: "ELSE_STATEMENT",
   bool: "BOOLEAN_TYPE",
+  loop: "LOOP_STATEMENT",
 };
 function KW(ch) {
   if (UNI_KW[ch]) return UNI_KW[ch];

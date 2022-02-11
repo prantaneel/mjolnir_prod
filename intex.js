@@ -67,7 +67,7 @@ Mjolnir.prototype.findExpression = function () {
   // this.Advance();
   var operator = this.TOKENS[this.tokenIterator];
   // console.log(operator);
-  if (["ADD", "SUB"].includes(operator.type)) {
+  if (["ADD", "SUBTRACT"].includes(operator.type)) {
     this.Advance();
     var rightTerm = this.findExpression();
     if (!rightTerm) throw new Error("Unsupported syntax type");
@@ -96,17 +96,37 @@ Mjolnir.prototype.findTerm = function () {
 Mjolnir.prototype.findFactor = function () {
   var tk = this.TOKENS[this.tokenIterator];
   if (tk.type === "IDENTIFIER") {
-    if (this.TOKENS[this.tokenIterator + 1].type !== "LPAREN") return tk;
+    // console.log(this.TOKENS[this.tokenIterator]);
+
+    if (
+      this.TOKENS[this.tokenIterator + 1].type !== "LPAREN" &&
+      this.TOKENS[this.tokenIterator + 1].type !== "ARRAYSTART"
+    )
+      return tk;
     else {
       this.Advance();
+      var p = this.TOKENS[this.tokenIterator];
+      // console.log(p);
+
       this.Advance();
-      var params = [];
-      if (this.TOKENS[this.tokenIterator].type !== "RPAREN") {
-        params = this.findParams();
+      if (p.type === "LPAREN") {
+        console.log(this.TOKENS[this.tokenIterator]);
+        var params = [];
+        if (this.TOKENS[this.tokenIterator].type !== "RPAREN") {
+          params = this.findParams();
+        }
+        if (this.TOKENS[this.tokenIterator].type !== "RPAREN")
+          throw new Error("Invalid Syntax");
+        return { body: { name: tk.name, params: params }, type: "call" };
+      } else {
+        var arrayIndex = this.findExpression();
+        if (this.TOKENS[this.tokenIterator].type !== "ARRAYEND")
+          throw new Error("Invalid Syntax");
+        return {
+          body: { name: tk.name, index: arrayIndex },
+          type: "arrayaccess",
+        };
       }
-      if (this.TOKENS[this.tokenIterator].type !== "RPAREN")
-        throw new Error("Invalid Syntax");
-      return { body: { name: tk.name, params: params }, type: "call" };
     }
   }
   if (tk.type === "STRING" || tk.type === "NUMBER" || tk.type === "BOOLEAN") {
@@ -245,19 +265,22 @@ Mjolnir.prototype.findFunctionArguments = function () {
   } else return undefined;
 };
 Mjolnir.prototype.findFunctionDeclaration = function () {
+  // console.log(this.TOKENS[this.tokenIterator]);
+
   var funcArgs = this.findFunctionArguments();
   this.Advance();
-  // console.log(funcArgs);
   if (!funcArgs) throw new Error("Syntax error");
+  // console.log(funcArgs);
   if (this.TOKENS[this.tokenIterator].type === "BLOCKSTART") {
     this.Advance();
-
+    // console.log(this.TOKENS[this.tokenIterator]);
     var exp = this.findProgram();
     // console.dir(exp, { depth: null });
     if (exp.length === 0) throw new Error("Syntax error");
     if (this.TOKENS[this.tokenIterator].type !== "BLOCKEND")
       throw new Error("Syntax error");
     this.Advance();
+
     return { args: funcArgs, body: exp };
   }
 };
@@ -271,7 +294,7 @@ Mjolnir.prototype.findComparison = function () {
     var rightTerm = this.findExpression();
     if (!rightTerm) throw new Error("Syntax error");
     return {
-      body: { left: leftTerm, operator: tk, right: right },
+      body: { left: leftTerm, operator: tk, right: rightTerm },
       type: "exp",
     };
   }
@@ -311,18 +334,57 @@ Mjolnir.prototype.findConditional = function () {
 ///////////////////////////Assignment////////////////////////////
 Mjolnir.prototype.findAssignment = function () {
   var tk = this.findVariableName();
-  var ass = this.findAssignment();
+  // console.log(tk);
+  // console.log(this.TOKENS[this.tokenIterator]);
+  var ass = this.findAssignmentOperator();
   if (!ass) throw new Error("Syntax error");
   var rightexp = this.findExpression();
   if (!rightexp) throw new Error("Syntax error");
   return {
     body: {
-      left: tk.name,
+      left: tk,
       operator: { name: "=", type: "ASSIGNMENT" },
       right: rightexp,
     },
     type: "exp",
   };
+};
+///////////////////////////////////Loop//////////////////////////
+Mjolnir.prototype.findLoop = function () {
+  var tk = this.TOKENS[this.tokenIterator];
+  if (tk.type === "LPAREN") {
+    this.Advance();
+    var vd = this.findVariableDeclaration();
+    if (!vd) throw new Error("Syntax error");
+    this.findLineEnd();
+    var comp = this.findComparison();
+    if (!comp) throw new Error("Syntax error");
+    this.findLineEnd();
+    var upd = this.findAssignment();
+    if (!upd) throw new Error("Syntax error");
+    if (this.TOKENS[this.tokenIterator].type !== "RPAREN")
+      throw new Error("Syntax error");
+    this.Advance();
+    var lpd = [];
+    if (this.TOKENS[this.tokenIterator].type === "BLOCKSTART") {
+      this.Advance();
+      lpd = this.findProgram();
+      if (lpd.length === 0) throw new Error("Syntax error");
+      if (this.TOKENS[this.tokenIterator].type !== "BLOCKEND")
+        throw new Error("Syntax error");
+      this.Advance();
+
+      return {
+        body: {
+          loopVariableDeclration: vd,
+          loopComparison: comp,
+          loopAssignment: upd,
+          loopBody: lpd,
+        },
+        type: "loop",
+      };
+    } else throw new Error("Syntax error");
+  } else throw new Error("Syntax error");
 };
 //////////////////////////////Program////////////////////////////
 Mjolnir.prototype.findLineEnd = function () {
@@ -336,7 +398,6 @@ Mjolnir.prototype.findProgram = function () {
     var tk = this.TOKENS[this.tokenIterator];
     if (["num", "arr", "func", "bool", "str"].includes(tk.name)) {
       var vardecl = this.findVariableDeclaration();
-      // console.log(this.TOKENS[this.tokenIterator]);
       if (!vardecl) throw new Error("Syntax error");
       // console.log(this.TOKENS[this.tokenIterator]);
       this.findLineEnd();
@@ -367,7 +428,14 @@ Mjolnir.prototype.findProgram = function () {
       AST.push(ret);
       continue;
     }
+    if (tk.type === "LOOP_STATEMENT") {
+      this.Advance();
+      var lp = this.findLoop();
+      if (!lp) throw new Error("Syntax error");
+      AST.push(lp);
+    }
     if (tk.type === "BLOCKEND" || tk.type === "ENDOFCODE") break;
+    this.findLineEnd();
   }
 
   return AST;
@@ -376,8 +444,8 @@ Mjolnir.prototype.findProgram = function () {
 
 var interpreter = new Mjolnir();
 interpreter.code(`
-  func fun = (num a, num b) <<
-    ->a+b;
+  loop(num a = 1; a < 10 ; a = a + 1)<<
+    num c = d;
   >>;
 `);
 console.log(interpreter.TOKENS);
