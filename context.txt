@@ -51,4 +51,5 @@ exp
 call
 variabledeclare
 arrayaccess
+loop
 ----------------------------------------------------------------
