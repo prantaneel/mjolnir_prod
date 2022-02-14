@@ -37,6 +37,7 @@ const UNI_KW = {
 
   NUMBER
   STRING
+  array
   ENDOFCODE
 };
 
@@ -53,3 +54,5 @@ variabledeclare
 arrayaccess
 loop
 ----------------------------------------------------------------
+
+makearray = takes x and makes array

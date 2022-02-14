@@ -82,7 +82,7 @@ Mjolnir.prototype.findTerm = function () {
   var leftFactor = this.findFactor();
   this.Advance();
   var operator = this.TOKENS[this.tokenIterator];
-  if (["MULTIPLY", "DIVIDE", "MOD"].includes(operator.type)) {
+  if (["MULTIPLY", "DIVIDE", "MOD", "XOR", "LESS", "GREATER", "EQUAL", "NOT_EQUAL"].includes(operator.type)) {
     this.Advance();
     var rightFactor = this.findTerm();
     if (!rightFactor) throw new Error("Unsupported syntax");
@@ -145,7 +145,7 @@ Mjolnir.prototype.findFactor = function () {
     var rightFactor = this.findFactor();
     if (!rightFactor) throw new Error("Unsupported syntax");
     return {
-      body: { left: 0, operator: "-", right: rightFactor },
+      body: { left: {name:'0', type: 'NUMBER'}, operator: "-", right: rightFactor },
       type: "exp",
     };
   }
@@ -156,7 +156,7 @@ Mjolnir.prototype.findFactor = function () {
     // this.Advance();
     tk = this.TOKENS[this.tokenIterator];
     if (tk.type !== "RPAREN") throw new Error("Unsupported syntax");
-    return { body: expression, type: "exp" };
+    return expression;
   }
   //add function call code
   return undefined;
@@ -303,10 +303,16 @@ Mjolnir.prototype.findComparison = function () {
 //////////////////////Conditionals/////////////////////////////////////////
 Mjolnir.prototype.findConditional = function () {
   var tk = this.TOKENS[this.tokenIterator];
-  if (tk !== "IF_STATEMENT") return;
+  if (tk.type !== "IF_STATEMENT") return;
+  this.Advance();
+  if (this.TOKENS[this.tokenIterator].type !== "LPAREN")
+    throw new Error("Syntax error");
   this.Advance();
   var compa = this.findComparison();
   if (!compa) throw new Error("Syntax error");
+  if (this.TOKENS[this.tokenIterator].type !== "RPAREN")
+    throw new Error("Syntax error");
+  this.Advance();
   var ifBlock;
   if (this.TOKENS[this.tokenIterator].type === "BLOCKSTART") {
     this.Advance();
@@ -314,11 +320,15 @@ Mjolnir.prototype.findConditional = function () {
     if (exp.length === 0) throw new Error("Syntax error");
     if (this.TOKENS[this.tokenIterator].type !== "BLOCKEND")
       throw new Error("Syntax error");
+    this.Advance();
     ifBlock = { body: exp };
   } else throw new Error("Syntax error");
   tk = this.TOKENS[this.tokenIterator];
-  if (tk !== "ELSE_STATEMENT")
-    return { body: { compare: compa, if: ifBlock, else: null } };
+  if (tk.type !== "ELSE_STATEMENT")
+    return {
+      body: { compare: compa, if: ifBlock, else: null },
+      type: "condition",
+    };
   this.Advance();
   var elseBlock;
   if (this.TOKENS[this.tokenIterator].type === "BLOCKSTART") {
@@ -327,8 +337,12 @@ Mjolnir.prototype.findConditional = function () {
     if (exp2.length === 0) throw new Error("Syntax error");
     if (this.TOKENS[this.tokenIterator].type !== "BLOCKEND")
       throw new Error("Syntax error");
+    this.Advance();
     elseBlock = { body: exp2 };
-    return { body: { compare: compa, if: ifBlock, else: elseBlock } };
+    return {
+      body: { compare: compa, if: ifBlock, else: elseBlock },
+      type: "condition",
+    };
   } else throw new Error("Syntax error");
 };
 ///////////////////////////Assignment////////////////////////////
@@ -407,6 +421,7 @@ Mjolnir.prototype.findProgram = function () {
     if (tk.type === "IF_STATEMENT") {
       var cond = this.findConditional();
       if (!cond) throw new Error("Syntax error");
+      // console.log(this.TOKENS[this.tokenIterator]);
       this.findLineEnd();
       AST.push(cond);
       continue;
@@ -432,8 +447,7 @@ Mjolnir.prototype.findProgram = function () {
       var ret = this.findExpression();
       if (!ret) throw new Error("Syntax error");
       this.findLineEnd();
-      ret.type = "return";
-      AST.push(ret);
+      AST.push({ body: ret, type: "return" });
       continue;
     }
     if (tk.type === "LOOP_STATEMENT") {
@@ -452,7 +466,7 @@ Mjolnir.prototype.findProgram = function () {
 
 var interpreter = new Mjolnir();
 interpreter.code(`
-  a=echo(11, 12, [1, 2, 3])+echo(11);
+  a = [1,2,3];
 `);
 console.log(interpreter.TOKENS);
 var exp = interpreter.findProgram();
