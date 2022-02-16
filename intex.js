@@ -356,11 +356,11 @@ Mjolnir.prototype.findAssignment = function () {
   if (!rightexp) throw new Error("Syntax error");
   return {
     body: {
-      left: tk,
+      left: {name: tk, type: "IDENTIFIER"},
       operator: { name: "=", type: "ASSIGNMENT" },
       right: rightexp,
     },
-    type: "exp",
+    type: "assign",
   };
 };
 ///////////////////////////////////Loop//////////////////////////
@@ -463,10 +463,20 @@ Mjolnir.prototype.findProgram = function () {
   return AST;
 }; //add advance at last};
 ////////////////////////////////////////////////////////////////
+// Mjolnir.prototype.runCode=function(AST){
+//   for(var i = 0;i < AST.length; i++){
+
+//   }
+// }
+
 
 var interpreter = new Mjolnir();
 interpreter.code(`
-  a = [1,2,3];
+  if(a==2)<<
+    echo("yay");
+  >>else<<
+    echo("lol");
+  >>;
 `);
 console.log(interpreter.TOKENS);
 var exp = interpreter.findProgram();

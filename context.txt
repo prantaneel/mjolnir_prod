@@ -56,3 +56,15 @@ loop
 ----------------------------------------------------------------
 
 makearray = takes x and makes array
+
+in memory
+
+num, str, arr
+
+##change the memory instance calls for localmemory
+
+
+
+1. use all the right instances of memory
+2. think about how global variable can be changed from interpreter2
+3. Migrate code to intex
