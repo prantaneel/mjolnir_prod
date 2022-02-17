@@ -150,7 +150,7 @@ Mjolnir.prototype.findFactor = function () {
     var rightFactor = this.findFactor();
     if (!rightFactor) throw new Error("Unsupported syntax");
     return {
-      body: { left: {name:'0', type: 'NUMBER'}, operator: "-", right: rightFactor },
+      body: { left: {name:'0', type: 'NUMBER'}, operator: {name: "-", type: "SUBTRACT"}, right: rightFactor },
       type: "exp",
     };
   }
@@ -500,7 +500,6 @@ Mjolnir.prototype.runCode=function(AST){
   }
 }
 Mjolnir.prototype.evaluate = function(a, op, b){
-
   if(typeof a !== typeof b) throw new Error("Type conversion not possible.");
   if(typeof a === "object") throw new Error("Can't perfor artithmetic operation on objects.");
   if(typeof a === "string") {
@@ -651,6 +650,7 @@ Mjolnir.prototype.findExp = function(x){
   // console.dir(x, { depth: null});
   if(x.type === "IDENTIFIER"){
       if(!this.memory[x.name]) throw new Error("Variable Not declared");
+      // console.log(this.memory[x.name].body);
       return this.memory[x.name].body;
   }
   if(x.type === "arrayaccess") return this.getArrayAccess(x);
@@ -672,11 +672,9 @@ var interpreter = new Mjolnir(globalMemory);
 interpreter.code(`
 
   func fn = (num a)<<
-    if(a==0)<<->0;>>;
-    if(a==1)<<->0;>>;
-    ->fn(a-1)+fn(a-2);
+    if(a>-1)<<->-10+7.32;>>;
   >>;
-  num a = fn(20);
+  num a = fn(0);
   echo(a);
 
 `);
