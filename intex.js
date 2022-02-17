@@ -40,7 +40,7 @@ const globalMemory = {
 };
 
 function Mjolnir(globalMemory) {
-  this.memory = globalMemory;
+  this.memory = Object.assign({}, globalMemory);
   this.tokenIterator = 0;
   this.callStack = [];
 }
