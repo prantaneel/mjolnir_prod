@@ -477,18 +477,18 @@ Mjolnir.prototype.runCode=function(AST){
     }
     else if(ast_node.type === "loop"){
       var ret = this.executeLoop(ast_node);
-      if(ret) return ret;
+      if(ret!==undefined){} return ret;
     }
     else if(ast_node.type === "condition"){
       var ret = this.executeConditional(ast_node);
-      if(ret) return ret;
+      if(ret!==undefined) return ret;
     }
     else if(ast_node.type === "assign"){
       this.assignVariable(ast_node);
     }
     else if(ast_node.type === "call"){
       var ret = this.getFunctionCall(ast_node);
-      if(ret) return ret;
+      if(ret!==undefined) return ret;
     }
     else if(ast_node.type === "return"){
       var ret = this.returnCall(ast_node);
@@ -572,7 +572,7 @@ Mjolnir.prototype.getFunctionCall = function(x){
   var Interpreter_local = new Mjolnir(localMemory);
   var localAST = this.memory[funcName].body;
   var ret = Interpreter_local.runCode(localAST);
-  if(ret) return ret;
+  if(ret!==undefined) return ret;
 
 }
 Mjolnir.prototype.returnCall = function(x){
@@ -645,7 +645,7 @@ Mjolnir.prototype.executeConditional = function(x){
       //execute else block
       if(body.else) ret = interpreter2.runCode(body.else.body);
   }
-  if(ret) return ret;
+  if(ret!==undefined) return ret;
 }
 Mjolnir.prototype.findExp = function(x){
   // console.dir(x, { depth: null});
@@ -672,8 +672,8 @@ var interpreter = new Mjolnir(globalMemory);
 interpreter.code(`
 
   func fn = (num a)<<
-    if(a==0)<<->1;>>;
-    if(a==1)<<->1;>>;
+    if(a==0)<<->0;>>;
+    if(a==1)<<->0;>>;
     ->fn(a-1)+fn(a-2);
   >>;
   num a = fn(20);
