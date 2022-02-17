@@ -9,14 +9,16 @@ const globalMemory = {
     params: [],
     body: (params) => {
       var printArray = [];
-      for (element in params) {
+      for (var element = 0; element < params.length; element++) {
         if (params[element].body) {
           printArray.push(params[element].body);
         } else if (typeof params[element].body === "number")
           printArray.push(params[element]);
         else printArray.push(JSON.stringify(params[element]));
       }
-      for (element in printArray) console.log(printArray[element]);
+      var printstr = printArray.join(' ');
+      // for (element in printArray) console.log(printArray[element]);
+      console.log(printstr);
     },
   },
   pb: {
@@ -38,7 +40,7 @@ const globalMemory = {
 };
 
 function Mjolnir(globalMemory) {
-  this.memory = global;
+  this.memory = globalMemory;
   this.tokenIterator = 0;
   this.callStack = [];
 }
@@ -50,8 +52,9 @@ Mjolnir.prototype.code = function (code) {
   //takes code as text input and tokenizes input
   this.tokenize(code);
   if (!this.TOKENS.length) return "";
-
-  // return this.runCode();
+  var AST = this.findProgram();
+  // console.dir(AST, { depth: null});
+  return this.runCode(AST);
 };
 Mjolnir.prototype.Advance = function () {
   this.tokenIterator++;
@@ -130,6 +133,8 @@ Mjolnir.prototype.findFactor = function () {
     }
   }
   if (tk.type === "STRING" || tk.type === "NUMBER" || tk.type === "BOOLEAN") {
+    var name2 = tk.name;
+    if(name2[0]==="\"" && name2[name2.length-1]==="\"") tk.name = name2.substr(1, name2.length-2);
     return tk;
   }
   if (tk.type == "ARRAYSTART") {
@@ -390,7 +395,7 @@ Mjolnir.prototype.findLoop = function () {
 
       return {
         body: {
-          loopVariableDeclration: vd,
+          loopVariableDeclaration: vd,
           loopComparison: comp,
           loopAssignment: upd,
           loopBody: lpd,
@@ -463,11 +468,37 @@ Mjolnir.prototype.findProgram = function () {
   return AST;
 }; //add advance at last};
 ////////////////////////////////////////////////////////////////
-// Mjolnir.prototype.runCode=function(AST){
-//   for(var i = 0;i < AST.length; i++){
-
-//   }
-// }
+Mjolnir.prototype.runCode=function(AST){
+  for(var i = 0;i < AST.length; i++){
+    //run the Program
+    var ast_node = AST[i];
+    if(ast_node.type === "variabledeclare"){
+      this.declareVariable(ast_node);
+    }
+    else if(ast_node.type === "loop"){
+      var ret = this.executeLoop(ast_node);
+      if(ret) return ret;
+    }
+    else if(ast_node.type === "condition"){
+      var ret = this.executeConditional(ast_node);
+      if(ret) return ret;
+    }
+    else if(ast_node.type === "assign"){
+      this.assignVariable(ast_node);
+    }
+    else if(ast_node.type === "call"){
+      var ret = this.getFunctionCall(ast_node);
+      if(ret) return ret;
+    }
+    else if(ast_node.type === "return"){
+      var ret = this.returnCall(ast_node);
+      // console.log(ast_node);
+      // console.log(ret);
+      return ret;
+    }
+    else throw new Error("Unidentified type of syntax.")
+  }
+}
 Mjolnir.prototype.evaluate = function(a, op, b){
 
   if(typeof a !== typeof b) throw new Error("Type conversion not possible.");
@@ -484,45 +515,56 @@ Mjolnir.prototype.evaluate = function(a, op, b){
   if(t==="DIVIDE") return a / b;
   if(t==="MOD") return a % b;
   if(t==="XOR") return a ^ b;
-  if(t==="LESS") return number(a < b);
-  if(t==="GREATER") return number(a > b);
-  if(t==="EQUAL") return number(a === b);
-  if(t==="NOT_EQUAL") return number(a !== b);
+  if(t==="LESS") return Number(a < b);
+  if(t==="GREATER") return Number(a > b);
+  if(t==="EQUAL") return Number(a === b);
+  if(t==="NOT_EQUAL") return Number(a !== b);
 }
 Mjolnir.prototype.makeArray = function(x){
   var retArr = [];
   var ogArr = x.body;
   for(var i = 0; i < ogArr.length; i++){
-      retArr.push(findExp(ogArr[i]));
+      retArr.push(this.findExp(ogArr[i]));
   }
   return retArr;
 }
 Mjolnir.prototype.getArrayAccess = function(x){
   var arName = x.body.name;
-  var ind = findExp(x.body.index);
+  var ind = this.findExp(x.body.index);
   if(!this.memory[arName]) throw new Error("varible Not found");
   if(this.memory[arName].type!="arr") throw new Error("Not an array");
   return this.memory[arName].body[ind];
 }
 Mjolnir.prototype.getFunctionCall = function(x){
-  var localMemory = this.memory;
+  var localMemory = Object.assign({}, this.memory);
   var funcName = x.body.name;
   var params = x.body.params; //input to the function call
+  var paramsArray = [];
+  if(funcName==="echo"){
+    //is a local function call?
+    for(var i = 0; i < params.length; i++){
+      paramsArray[i] = this.findExp(params[i]);
+      //add support for bool
+    }
+    this.memory.echo.body(paramsArray);
+    return;
+  }
   if(!this.memory[funcName]) throw new Error("Function declaration not found!");
   var funcArgs = this.memory[funcName].args; //function definition parameters
   if(params.length!==funcArgs.length) throw new Error("number of input doesn't equate to params");
   for(var i = 0; i < funcArgs.length; i++){
       var p = params[i], ar = funcArgs[i];
-      p = findExp(p);
-      if((ar.type==="num" && typeof p === "number")||
-      (ar.type==="str" && typeof p === "string")||
-      (ar.type==="arr" && typeof p === "object")){
+      paramsArray[i] = this.findExp(p);
+      // console.log(paramsArray[i]);
+      if((ar.type==="num" && typeof paramsArray[i] === "number")||
+      (ar.type==="str" && typeof paramsArray[i] === "string")||
+      (ar.type==="arr" && typeof paramsArray[i] === "object")){
           localMemory[ar.name] = {
               isNative: false,
               name: ar.name,
               type: ar.type,
               args: [],
-              body: p,
+              body: paramsArray[i],
           };
       }
       //add support for bool
@@ -534,14 +576,15 @@ Mjolnir.prototype.getFunctionCall = function(x){
 
 }
 Mjolnir.prototype.returnCall = function(x){
-  return findExp(x.type);
+  return this.findExp(x.body);
 }
 Mjolnir.prototype.declareVariable = function(x){
   var bd = x.body;
   var name = bd.name;
   if(this.memory[name]) throw new Error("Already declared Variable!!")
-  if(bd["variable-type"]!=="fn"){
-      var body = findExp(bd["variable-body"]);
+  if(bd["variable-type"]!=="func"){
+    // console.dir(bd["variable-body"], { depth: null})
+      var body = this.findExp(bd["variable-body"]);
       this.memory[name] = {
           isNative: false,
           name: name,
@@ -551,7 +594,7 @@ Mjolnir.prototype.declareVariable = function(x){
       }
       return;
   }
-  if(bd["variable-type"]==="fn"){
+  if(bd["variable-type"]==="func"){
       this.memory[name] = {
           isNative: false,
           name: name,
@@ -566,66 +609,78 @@ Mjolnir.prototype.declareVariable = function(x){
 Mjolnir.prototype.assignVariable = function(x){
   var left = x.body.left.name
   if(!this.memory[left]) throw new Error("Syntax error")
-  var exp = findExp(x.body.right);
+  var exp = this.findExp(x.body.right);
   var typ = this.memory[left].type;
-  if(typ==="fn") throw new Error("Functions cant be redeclared");
+  if(typ==="func") throw new Error("Functions cant be redeclared");
   if((typ==="num" && typeof exp === "number")||
       (typ==="str" && typeof exp === "string")||
       (typ==="arr" && typeof exp === "object")){
-      memory[left].body = exp;
+      this.memory[left].body = exp;
   }
 }
-Mjolnir.prototype.executeLoop(x){
-  var localMemory = this.memory;
+Mjolnir.prototype.executeLoop = function(x){
+  var localMemory = Object.assign({}, this.memory);
   var interpreter2 = new Mjolnir(localMemory);
-  declareVariable(x.body.loopVariableDeclration);
-  interpreter2.memory[loopComparison] = x.body.loopComparison;
-  interpreter2.memory[loopAssignment] = x.body.loopAssignment;
-  while(findExp(interpreter2.memory[loopComparison])!=0){
+  interpreter2.declareVariable(x.body.loopVariableDeclaration);
+  interpreter2.memory["loopComparison"] = x.body.loopComparison;
+  interpreter2.memory["loopAssignment"] = x.body.loopAssignment;
+  while(interpreter2.findExp(interpreter2.memory["loopComparison"])!=0){
+    // console.log(x.body.loopBody);
       interpreter2.runCode(x.body.loopBody);
-      assignVariable(interpreter2.memory[loopAssignment]);
+      interpreter2.assignVariable(interpreter2.memory["loopAssignment"]);
+      // console.log(this.findExp(interpreter2.memory["loopComparison"]));
   }
 }
-Mjolnir.prototype.executeConditional(x){
+Mjolnir.prototype.executeConditional = function(x){
   var body = x.body;
-  var cond = findExp(body.compare);
-  var localMemory = this.memory;
+  var cond = this.findExp(body.compare);
+  var localMemory = Object.assign({}, this.memory);
   var interpreter2 = new Mjolnir(localMemory);
+  var ret;
   if(cond){
       //execute if block
-      interpreter2.runCode(body.if.body);
+      ret = interpreter2.runCode(body.if.body);
   }
   else{
       //execute else block
-      if(body.else) interpreter2.runCode(body.else.body);
+      if(body.else) ret = interpreter2.runCode(body.else.body);
   }
+  if(ret) return ret;
 }
-Mjolnir.prototype.findExp(x){
+Mjolnir.prototype.findExp = function(x){
   // console.dir(x, { depth: null});
   if(x.type === "IDENTIFIER"){
       if(!this.memory[x.name]) throw new Error("Variable Not declared");
       return this.memory[x.name].body;
   }
-  if(x.type === "arrayaccess") return getArrayAccess(x);
-  if(x.type==="call") return getFunctionCall(x);
+  if(x.type === "arrayaccess") return this.getArrayAccess(x);
+  if(x.type==="call") {
+    var ret = this.getFunctionCall(x);
+    // console.log(ret);
+    return ret;
+  }
   if(x.type==="NUMBER") return parseFloat(x.name);
   if(x.type==="STRING") return x.name;
-  if(x.type==="array") return makeArray(x);
+  if(x.type==="array") return this.makeArray(x);
   if(x.type==="exp"){
-      return evaluate(findExp(x.body.left),x.body.operator, findExp(x.body.right));
+      return this.evaluate(this.findExp(x.body.left),x.body.operator, this.findExp(x.body.right));
   }
 }
 
 
-var interpreter = new Mjolnir();
+var interpreter = new Mjolnir(globalMemory);
 interpreter.code(`
-  if(a==2)<<
-    echo("yay");
-  >>else<<
-    echo("lol");
+
+  func fn = (num a)<<
+    if(a==0)<<->1;>>;
+    if(a==1)<<->1;>>;
+    ->fn(a-1)+fn(a-2);
   >>;
+  num a = fn(20);
+  echo(a);
+
 `);
-console.log(interpreter.TOKENS);
-var exp = interpreter.findProgram();
-console.dir(exp, { depth: null });
+// console.log(interpreter.TOKENS);
+// var exp = interpreter.findProgram();
+// console.dir(interpreter.memory, { depth: null });
 // console.log(interpreter.TOKENS[interpreter.tokenIterator]);
