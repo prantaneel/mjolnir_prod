@@ -1,5 +1,10 @@
 # Mjolnir
 Mjolnir is a simple, lightweight programming language. It follows **ENBF grammar** and the interpreter is completely written in javascript. Although its easy to read, its a strongly typed language and supports inline functions as well as recursion blocks.
+
+### IMPORTANT!!
+- No support for boolean has been added. Boolean is internally converted to **number**.
+- Due to small stack size, limited number of recursive calls can be made.
+
 ## Grammar
 ```
 1. [] => optional 0/1
